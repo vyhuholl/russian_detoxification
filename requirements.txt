@@ -1,2 +1,4 @@
 pandas>=1.4.0
+numpy>=1.22.2
 scikit-learn>=1.0.2
+tqdm>=4.62.3
