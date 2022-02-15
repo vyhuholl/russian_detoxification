@@ -1,4 +1,6 @@
 .DS_Store
+data/ru_fasttext/model.model
+data/udpipe_syntagrus.model
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
