@@ -1,8 +1,8 @@
 gensim>=4.1.2
-numpy>=1.22.2
+numpy>=1.22.3
 pandas>=1.4.1
 scikit-learn>=1.0.2
-torch>=1.10.2
-tqdm>=4.62.3
-transformers=4.16.2
+torch>=1.11.0
+tqdm>=4.63.0
+transformers=4.17.0
 ufal.udpipe>=1.2.0.3

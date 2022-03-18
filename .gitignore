@@ -1,5 +1,5 @@
 .DS_Store
-data/ru_fasttext/model.model
+data/ru_fasttext/*
 data/udpipe_syntagrus.model
 
 # Byte-compiled / optimized / DLL files

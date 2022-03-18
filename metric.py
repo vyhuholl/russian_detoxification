@@ -1,6 +1,7 @@
 import os
-import shutil
+import random
 import sys
+from shutil import unpack_archive
 from typing import List
 
 import gensim
@@ -9,8 +10,22 @@ import torch
 import wget
 from sklearn import metrics
 from tqdm import tqdm
-from transformers import BertForSequenceClassification, BertTokenizer
+from transformers import (
+    BertForSequenceClassification,
+    BertTokenizer,
+    GPT2LMHeadModel,
+    GPT2Tokenizer,
+)
 from ufal.udpipe import Model, Pipeline
+
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
 
 DATA_DIR = "/data"
 
@@ -20,10 +35,11 @@ fasttext_filename = "ru_fasttext/model.model"
 if not os.path.isfile(os.path.join(DATA_DIR, fasttext_filename)):
     print("FastText model not found. Downloading...", file=sys.stderr)
     wget.download(fasttext_model_url, out=DATA_DIR)
-    shutil.unpack_archive(
+    unpack_archive(
         os.path.join(DATA_DIR, fasttext_model_url.split("/")[-1]),
         os.path.join(DATA_DIR, "ru_fasttext/"),
     )
+    os.remove(os.path.join(DATA_DIR, fasttext_model_url.split("/")[-1]))
 
 model = gensim.models.KeyedVectors.load(os.path.join(DATA_DIR, fasttext_filename))
 
@@ -31,7 +47,7 @@ udpipe_url = "https://rusvectores.org/static/models/udpipe_syntagrus.model"
 udpipe_filename = udpipe_url.split("/")[-1]
 
 if not os.path.isfile(os.path.join(DATA_DIR, udpipe_filename)):
-    print("\nUDPipe model not found. Downloading...", file=sys.stderr)
+    print("UDPipe model not found. Downloading...", file=sys.stderr)
     wget.download(udpipe_url, out=DATA_DIR)
 
 model_udpipe = Model.load(os.path.join(DATA_DIR, udpipe_filename))
@@ -50,7 +66,7 @@ def style_transfer_accuracy(preds: List[str]) -> float:
     Returns:
         float
     """
-    print("Calculating style of predictions")
+    print("Calculating style of predictions...")
     ans = []
 
     tokenizer = BertTokenizer.from_pretrained(
@@ -104,7 +120,7 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
     Returns:
         float
     """
-    print("Calculating cosine similarities")
+    print("Calculating cosine similarities...")
     ans = []
 
     for text_1, text_2 in tqdm(zip(inputs, preds)):
@@ -127,12 +143,30 @@ def perplexity(preds: List[str]) -> float:
     Returns:
         float
     """
-    print("Calculating perplexity")
+    print("Calculating perplexity...")
+    lls = []
+    weights = []
+
+    tokenizer = GPT2Tokenizer.from_pretrained("sberbank-ai/rugpt2large")
+    model = GPT2LMHeadModel.from_pretrained("sberbank-ai/rugpt2large")
+    model.to(DEVICE)
 
     for text in tqdm(preds):
-        pass
+        encodings = tokenizer(f"\n{text}\n", return_tensors="pt")
+        input_ids = encodings.input_ids.to(DEVICE)
+        target_ids = input_ids.clone()
+        w = max(0, len(input_ids[0]) - 1)
+        if w > 0:
+            with torch.no_grad():
+                outputs = model(input_ids, labels=target_ids)
+                log_likelihood = outputs[0]
+                ll = log_likelihood.item()
+        else:
+            ll = 0
+        lls.append(ll)
+        weights.append(w)
 
-    return 0.0
+    return np.dot(lls, weights) / sum(weights)
 
 
 def metric(sta: float, cs: float, ppl: float) -> float:
