@@ -5,6 +5,7 @@ from typing import List
 
 import gensim
 import numpy as np
+import torch
 import wget
 from sklearn import metrics
 from tqdm import tqdm
@@ -103,6 +104,7 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
     Returns:
         float
     """
+    print("Calculating cosine similarities")
     ans = []
 
     for text_1, text_2 in tqdm(zip(inputs, preds)):
@@ -115,14 +117,22 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
     return np.mean(ans)
 
 
-def perplexity():
+def perplexity(preds: List[str]) -> float:
     """
+    Computes the perplexity for the list of sentences.
 
     Parameters:
+        preds: List[str]
 
     Returns:
+        float
     """
-    pass
+    print("Calculating perplexity")
+
+    for text in tqdm(preds):
+        pass
+
+    return 0.0
 
 
 def metric(sta: float, cs: float, ppl: float) -> float:
