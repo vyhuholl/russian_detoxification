@@ -3,11 +3,12 @@ Models for automatic detoxification of Russian texts.
 Folder [`data`](https://github.com/vyhuholl/russian_detoxification/tree/master/data) consists of:
 * [`data/train.csv`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/train.csv) — train dataset, 262702 texts (213271 non-toxic, 37073 toxic);
 * [`data/test.txt`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/test.txt) — test dataset, 12358 toxic texts;
-* [`data/parallel_corpus.csv`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/parallel_corpus.csv) — parallel train dataset, 500 samples.
+* [`data/parallel_corpus.csv`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/parallel_corpus.csv) — parallel train dataset, 500 samples;
+* [`data/toxic_vocab.txt`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt) — pre-defined vocab of rude and toxic words, 139490 words.
 ## Models
 ### Baselines
 * **Duplicate** — simple duplication of the input;
-* **Remove** — removal of rude and toxic from pre-defined [vocab](https://github.com/skoltech-nlp/rudetoxifier/blob/main/data/train/MAT_FINAL_with_unigram_inflections.txt);
+* **Remove** — removal of rude and toxic from the pre-defined [vocab](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt);
 * **Retrieve** — retrieval based on cosine similarity between word embeddings from non-toxic part of [RuToxic](https://github.com/skoltech-nlp/rudetoxifier/blob/main/data/train/ru_toxic_dataset.csv) dataset.
 ## Evaluation
 The evaluation consists of three types of metrics:
