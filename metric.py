@@ -63,7 +63,7 @@ def classify_texts(
             preds = torch.softmax(model(**batch).logits, -1)[:, 1].cpu().numpy()
         ans.append(preds)
 
-    return np.concatenate(ans)
+    return np.concatenate([1 - x for x in ans])
 
 
 def style_transfer_accuracy(
