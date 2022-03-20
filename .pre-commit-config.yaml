@@ -20,3 +20,4 @@ repos:
     hooks:
     -   id: mypy
         exclude: ^.*/data/.*$
+        additional_dependencies: [types-termcolor]

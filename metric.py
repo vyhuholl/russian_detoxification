@@ -1,14 +1,16 @@
+import argparse
 import os
 import random
 import sys
 from shutil import unpack_archive
-from typing import List
+from typing import List, Optional
+from urllib.request import urlretrieve
 
 import gensim
 import numpy as np
 import torch
-import wget
-from sklearn import metrics
+from sklearn.metrics import pairwise
+from termcolor import colored
 from tqdm import tqdm
 from transformers import (
     BertForSequenceClassification,
@@ -17,6 +19,7 @@ from transformers import (
     GPT2Tokenizer,
 )
 from ufal.udpipe import Model, Pipeline
+from utils import show_progress
 
 random.seed(42)
 np.random.seed(42)
@@ -27,41 +30,39 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-DATA_DIR = "/data"
+pbar = None
 
 fasttext_model_url = "http://vectors.nlpl.eu/repository/20/213.zip"
 fasttext_filename = "ru_fasttext/model.model"
 
-if not os.path.isfile(os.path.join(DATA_DIR, fasttext_filename)):
+if not os.path.exists(fasttext_filename):
     print("FastText model not found. Downloading...", file=sys.stderr)
-    wget.download(fasttext_model_url, out=DATA_DIR)
-    unpack_archive(
-        os.path.join(DATA_DIR, fasttext_model_url.split("/")[-1]),
-        os.path.join(DATA_DIR, "ru_fasttext/"),
-    )
-    os.remove(os.path.join(DATA_DIR, fasttext_model_url.split("/")[-1]))
+    urlretrieve(fasttext_model_url, fasttext_model_url.split("/")[-1], show_progress)
+    unpack_archive(fasttext_model_url.split("/")[-1], "ru_fasttext")
+    os.remove(fasttext_model_url.split("/")[-1])
 
-model = gensim.models.KeyedVectors.load(os.path.join(DATA_DIR, fasttext_filename))
+model = gensim.models.KeyedVectors.load(fasttext_filename)
 
 udpipe_url = "https://rusvectores.org/static/models/udpipe_syntagrus.model"
 udpipe_filename = udpipe_url.split("/")[-1]
 
-if not os.path.isfile(os.path.join(DATA_DIR, udpipe_filename)):
+if not os.path.exists(udpipe_filename):
     print("UDPipe model not found. Downloading...", file=sys.stderr)
-    wget.download(udpipe_url, out=DATA_DIR)
+    urlretrieve(udpipe_url, udpipe_filename, show_progress)
 
-model_udpipe = Model.load(os.path.join(DATA_DIR, udpipe_filename))
+model_udpipe = Model.load(udpipe_filename)
 process_pipeline = Pipeline(
     model_udpipe, "tokenize", Pipeline.DEFAULT, Pipeline.DEFAULT, "conllu"
 )
 
 
-def style_transfer_accuracy(preds: List[str]) -> float:
+def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
     """
     Computes style transfer accuracy for the list of model predictions.
 
     Parameters:
         preds: List[str]
+        batch_size: int
 
     Returns:
         float
@@ -76,8 +77,8 @@ def style_transfer_accuracy(preds: List[str]) -> float:
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
 
-    for i in tqdm(0, len(preds), 32):
-        batch = tokenizer(preds[i : i + 32], return_tensors="pt", padding=True)
+    for i in tqdm(0, len(preds), batch_size):
+        batch = tokenizer(preds[i : i + batch_size], return_tensors="pt", padding=True)
         res = model(**batch)["logits"].argmax(1).float().data.tolist()
         ans.extend([1 - item for item in res])
 
@@ -125,7 +126,7 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
 
     for text_1, text_2 in tqdm(zip(inputs, preds)):
         ans.append(
-            metrics.pairwise.cosine_similarity(
+            pairwise.cosine_similarity(
                 get_sentence_vector(text_1), get_sentence_vector(text_2)
             )
         )
@@ -185,15 +186,75 @@ def metric(sta: float, cs: float, ppl: float) -> float:
     return (max(sta, 0.0) * max(cs, 0.0) * max(1.0 / ppl, 0.0)) ** (1 / 3)
 
 
-def main():
+def main(
+    inputs_path: str,
+    preds_path: str,
+    batch_size: int,
+    model_name: str,
+    results_file: Optional[str],
+) -> None:
     """
+    Computes metrics and writes them to console and to the results file.
 
     Parameters:
-
+        inputs_path: str
+        preds_path: str
+        batch_size: int
+        model_name: str
+        results_file: str or None
     Returns:
+        None
     """
-    pass
+    with open(inputs_path) as inputs_file, open(preds_path) as preds_file:
+        inputs = inputs_file.readlines()
+        preds = preds_file.readlines()
+
+    sta = style_transfer_accuracy(preds, batch_size=batch_size)
+    cs = cosine_similarity(inputs, preds)
+    ppl = perplexity(preds)
+    gm = metric(sta, cs, ppl)
+    print(f"Model name: {model_name}\n")
+    print(colored("STA", attrs=["bold"]), f": {sta:.2f}")
+    print(colored("CS", attrs=["bold"]), f": {cs:.2f}")
+    print(colored("PPL", attrs=["bold"]), f": {ppl:.2f}")
+    print(
+        colored("Geometric mean", attrs=["bold"]),
+        ":",
+        colored(f": {sta:.2f}", attrs=["bold"]),
+    )
+
+    if results_file:
+        if os.path.exists(results_file):
+            if os.path.isfile(results_file):
+                with open(results_file, "a") as results:
+                    results.write(
+                        " | ".join([str(sta), str(cs), str(ppl), f"**{gm}**"])
+                    )
+            else:
+                raise ValueError("Results file is a directory!")
+        else:
+            with open(results_file, "w") as results:
+                results.write("Method | STA↑ | CS↑ | PPL↓ | GM↑")
+                results.write("------ | ---- | --- | ----| ---")
+                results.write(" | ".join([str(sta), str(cs), str(ppl), f"**{gm}**"]))
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        prog="metric", description="Compute metrics for the predictions of a model."
+    )
+    parser.add_argument("-i", "--inputs", required=True, help="path to test sentences")
+    parser.add_argument(
+        "-p", "--preds", required=True, help="path to predictions of a model"
+    )
+    parser.add_argument(
+        "-b",
+        "--batch_size",
+        default=32,
+        type=int,
+        help="batch size for the toxicity classifier",
+    )
+    parser.add_argument("-m", "--model", default="", help="model name")
+    parser.add_argument("-f", "--file", default=None, help="results file")
+    args = parser.parse_args()
+    main(args.inputs, args.preds, args.batch_size, args.model, args.file)

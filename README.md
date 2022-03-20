@@ -1,9 +1,9 @@
 Models for automatic detoxification of Russian texts.
 ## Data
-Folder `data` consists of:
-* `data/train.csv` — train dataset, 262702 texts (213271 non-toxic, 37073 toxic);
-* `data/test.txt` — test dataset, 12358 toxic texts;
-* `data/parallel_corpus.csv` — parallel train dataset, 500 samples.
+Folder [`data`](https://github.com/vyhuholl/russian_detoxification/tree/master/data) consists of:
+* [`data/train.csv`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/train.csv) — train dataset, 262702 texts (213271 non-toxic, 37073 toxic);
+* [`data/test.txt`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/test.txt) — test dataset, 12358 toxic texts;
+* [`data/parallel_corpus.csv`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/parallel_corpus.csv) — parallel train dataset, 500 samples.
 ## Models
 ### Baselines
 * **Duplicate** — simple duplication of the input;
