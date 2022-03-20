@@ -250,7 +250,14 @@ def main(
                 results.write("Method | STA↑ | CS↑ | FL↑ | JS↑")
                 results.write("------ | ---- | --- | --- | ---")
                 results.write(
-                    " | ".join([str(sta), str(cs), str(fl), f"**{js}**"])
+                    " | ".join(
+                        [
+                            f"{np.mean(sta):.2f}",
+                            f"{np.mean(cs):.2f}",
+                            f"{np.mean(fl):.2f}",
+                            f"**{np.mean(js):.2f}**",
+                        ]
+                    )
                 )
 
 
