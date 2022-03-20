@@ -10,6 +10,7 @@ import gensim
 import numpy as np
 from sklearn.metrics import pairwise
 from termcolor import colored
+import torch
 from tqdm import tqdm
 from transformers import BertForSequenceClassification, BertTokenizer
 from ufal.udpipe import Model, Pipeline
@@ -17,19 +18,25 @@ from utils import show_progress
 
 random.seed(42)
 np.random.seed(42)
+torch.manual_seed(42)
+
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
 
 pbar = None
 
 
 def classify_texts(
-    model,
-    tokenizer,
+    model: BertForSequenceClassification,
+    tokenizer: BertTokenizer,
     texts: List[str],
     batch_size: int = 32,
     desc: Optional[str] = None,
-) -> List[float]:
+) -> np.ndarray:
     """
-    Computes accuracies for a BERT-based text classifier
+    Computes confidencies for a BERT-based text classifier
     on a list of texts.
 
     Parameters:
@@ -40,7 +47,7 @@ def classify_texts(
         desc: str or None
 
     Returns:
-        List[float]
+        np.ndarray
     """
     ans = []
 
@@ -51,30 +58,33 @@ def classify_texts(
             padding=True,
             truncation=True,
             max_length=512,
-        )
-        res = model(**batch)["logits"].argmax(1).float().data.tolist()
-        ans.extend([1 - item for item in res])
+        ).to(model.device)
+        with torch.no_grad():
+            preds = torch.softmax(model(batch).logits, -1)[:, 1].cpu().numpy()
+        ans.append(preds)
 
-    return ans
+    return np.concatenate(ans)
 
 
-def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
+def style_transfer_accuracy(
+    preds: List[str], batch_size: int = 32
+) -> np.ndarray:
     """
-    Computes style transfer accuracy for the list of model predictions.
+    Computes style transfer accuracies for the list of model predictions.
 
     Parameters:
         preds: List[str]
         batch_size: int
 
     Returns:
-        float
+        np.ndarray
     """
     tokenizer = BertTokenizer.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
-    )
+    ).to(DEVICE)
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
-    )
+    ).to(DEVICE)
     ans = classify_texts(
         model,
         tokenizer,
@@ -82,7 +92,7 @@ def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
         batch_size=batch_size,
         desc="Calculating predictions' toxicity...",
     )
-    return np.mean(ans)
+    return ans
 
 
 def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
@@ -112,16 +122,16 @@ def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
     return np.mean(embd, axis=0).reshape(1, -1)
 
 
-def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
+def cosine_similarity(inputs: List[str], preds: List[str]) -> np.ndarray:
     """
-    Computes cosine similarity between vectors of texts' embeddings.
+    Computes cosine similarities between vectors of texts' embeddings.
 
     Parameters:
         inputs: List[str]
         preds: List[str]
 
     Returns:
-        float
+        np.ndarray
     """
     print("Loading FastText model...")
     model = gensim.models.KeyedVectors.load(fasttext_filename)
@@ -142,14 +152,15 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
             )
         )
 
-    return np.mean(ans)
+    return np.array(ans)
 
 
 def fluency_score(
     inputs: List[str], preds: List[str], batch_size: int = 32
-) -> float:
+) -> np.ndarray:
     """
-    Computes the perplexity for the list of sentences.
+    Computes fluency scores
+    for the two lists of original and predicted sentences.
 
     Parameters:
         inputs: List[str]
@@ -157,14 +168,14 @@ def fluency_score(
         batch_size: int
 
     Returns:
-        float
+        np.ndarray
     """
     tokenizer = BertTokenizer.from_pretrained(
         "SkolkovoInstitute/rubert-base-corruption-detector"
-    )
+    ).to(DEVICE)
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/rubert-base-corruption-detector"
-    )
+    ).to(DEVICE)
     input_scores = classify_texts(
         model,
         tokenizer,
@@ -179,26 +190,11 @@ def fluency_score(
         batch_size=batch_size,
         desc="Calculating predictions' fluency...",
     )
-    ans = [
-        score_1 - score_2 for score_1, score_2 in zip(input_scores, pred_scores)
-    ]
-    return np.mean(ans)
-
-
-def metric(sta: float, cs: float, fl: float) -> float:
-    """
-    Computes the geometric mean between style transfer accuracy,
-    cosine similarity and fluency score.
-
-    Parameters:
-        sta: float
-        cs: float
-        fl: float
-
-    Returns:
-        float
-    """
-    return (max(sta, 0.0) * max(cs, 0.0) * max(fl, 0.0)) ** (1 / 3)
+    ans = pred_scores - input_scores
+    ans = ans * 1.15 + 1
+    ans = np.maximum(0, ans)
+    ans = np.minimum(1, ans)
+    return ans
 
 
 def main(
@@ -229,15 +225,15 @@ def main(
     sta = style_transfer_accuracy(preds, batch_size=batch_size)
     cs = cosine_similarity(inputs, preds)
     fl = fluency_score(inputs, preds, batch_size=batch_size)
-    gm = metric(sta, cs, fl)
+    js = sta * cs * fl
     print(f"\nModel name: {model_name}\n")
-    print(colored("STA", attrs=["bold"]), f": {sta:.2f}")
-    print(colored("CS", attrs=["bold"]), f": {cs:.2f}")
-    print(colored("FL", attrs=["bold"]), f": {fl:.2f}")
+    print(colored("STA", attrs=["bold"]), f": {np.mean(sta):.2f}")
+    print(colored("CS", attrs=["bold"]), f": {np.mean(cs):.2f}")
+    print(colored("FL", attrs=["bold"]), f": {np.mean(fl):.2f}")
     print(
-        colored("Geometric mean", attrs=["bold"]),
+        colored("Joint score", attrs=["bold"]),
         ":",
-        colored(f": {gm:.2f}", attrs=["bold"]),
+        colored(f": {np.mean(js):.2f}", attrs=["bold"]),
     )
 
     if results_file:
@@ -245,16 +241,16 @@ def main(
             if os.path.isfile(results_file):
                 with open(results_file, "a") as results:
                     results.write(
-                        " | ".join([str(sta), str(cs), str(fl), f"**{gm}**"])
+                        " | ".join([str(sta), str(cs), str(fl), f"**{js}**"])
                     )
             else:
                 raise ValueError("Results file is a directory!")
         else:
             with open(results_file, "w") as results:
-                results.write("Method | STA↑ | CS↑ | FL↑ | GM↑")
+                results.write("Method | STA↑ | CS↑ | FL↑ | JS↑")
                 results.write("------ | ---- | --- | --- | ---")
                 results.write(
-                    " | ".join([str(sta), str(cs), str(fl), f"**{gm}**"])
+                    " | ".join([str(sta), str(cs), str(fl), f"**{js}**"])
                 )
 
 
