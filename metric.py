@@ -60,7 +60,7 @@ def classify_texts(
             max_length=512,
         ).to(model.device)
         with torch.no_grad():
-            preds = torch.softmax(model(batch).logits, -1)[:, 1].cpu().numpy()
+            preds = torch.softmax(model(**batch).logits, -1)[:, 1].cpu().numpy()
         ans.append(preds)
 
     return np.concatenate(ans)
@@ -81,7 +81,7 @@ def style_transfer_accuracy(
     """
     tokenizer = BertTokenizer.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
-    ).to(DEVICE)
+    )
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
     ).to(DEVICE)
@@ -172,7 +172,7 @@ def fluency_score(
     """
     tokenizer = BertTokenizer.from_pretrained(
         "SkolkovoInstitute/rubert-base-corruption-detector"
-    ).to(DEVICE)
+    )
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/rubert-base-corruption-detector"
     ).to(DEVICE)
