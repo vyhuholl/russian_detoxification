@@ -68,6 +68,7 @@ def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
+    preds = [text[:512] for text in preds]
     ans = []
 
     for i in tqdm(
