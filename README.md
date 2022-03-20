@@ -24,6 +24,6 @@ You can run the [`metric.py`](https://github.com/vyhuholl/russian_detoxification
 * `-m`, `--model` — the name of your model, is empty by default;
 * `-f`, `--file` — the path to the output file. If not specified, results will not be written to a file.
 ## Results
-Method | STA↑ | CS↑ | JS↑ | GM↑
------- | ---- | --- | ---| ---
+Method | STA↑ | CS↑ | FL↑ | JS↑
+------ | ---- | --- | --- | ---
 **Baselines** |
