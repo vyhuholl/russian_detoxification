@@ -11,9 +11,9 @@ Folder [`data`](https://github.com/vyhuholl/russian_detoxification/tree/master/d
 * **Retrieve** — retrieval based on cosine similarity between word embeddings from non-toxic part of [RuToxic](https://github.com/skoltech-nlp/rudetoxifier/blob/main/data/train/ru_toxic_dataset.csv) dataset.
 ## Evaluation
 The evaluation consists of three types of metrics:
-* **style transfer accuracy (STA)** — the average confidence of the pre-trained BERT-based toxic/non-toxic text classifier (we suppose that the resulted texts should be in non-toxic style);
+* **style transfer accuracy (STA)** — the average confidence of the pre-trained BERT-based toxic/non-toxic text classifier (`SkolkovoInstitute/russian_toxicity_classifier`). We suppose that the resulted texts should be in non-toxic style);
 * **cosine similarity (CS)** — the average distance of embeddings of the input and output texts. The embeddings are generated with the [FastText Skipgram](http://vectors.nlpl.eu/repository/20/213.zip) model;
-* **fluency score (FL)** — the average difference in confidence of the pre-trained BERT-based corrupted/non-corrupted text classifier (we suppose that the resulted texts should not be corrupted) between the input and output texts.
+* **fluency score (FL)** — the average difference in confidence of the pre-trained BERT-based corrupted/non-corrupted text classifier (`SkolkovoInstitute/rubert-base-corruption-detector`) between the input and output texts. We suppose that both the input and the output texts should not be corrupted.
 
 Finally, **joint score (JS)**: the sentence-level multiplication of the **STA**, **SIM**, and **FL** scores.
 
