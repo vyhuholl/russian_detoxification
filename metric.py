@@ -62,17 +62,18 @@ def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
     Returns:
         float
     """
-    print("Calculating style of predictions...")
-    ans = []
-
     tokenizer = BertTokenizer.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
     model = BertForSequenceClassification.from_pretrained(
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
+    ans = []
 
-    for i in tqdm(0, len(preds), batch_size):
+    for i in tqdm(
+        range(0, len(preds), batch_size),
+        desc="Calculating style of predictions...",
+    ):
         batch = tokenizer(
             preds[i : i + batch_size], return_tensors="pt", padding=True
         )
@@ -130,9 +131,10 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
         model_udpipe, "tokenize", Pipeline.DEFAULT, Pipeline.DEFAULT, "conllu"
     )
     ans = []
-    print("Calculating cosine similarities...")
 
-    for text_1, text_2 in tqdm(zip(inputs, preds)):
+    for text_1, text_2 in tqdm(
+        zip(inputs, preds), desc="Calculating cosine similarities..."
+    ):
         ans.append(
             pairwise.cosine_similarity(
                 get_sentence_vector(text_1, model, pipeline),
@@ -153,15 +155,13 @@ def perplexity(preds: List[str]) -> float:
     Returns:
         float
     """
-    print("Calculating perplexity...")
-    lls = []
-    weights = []
-
     tokenizer = GPT2Tokenizer.from_pretrained("sberbank-ai/rugpt2large")
     model = GPT2LMHeadModel.from_pretrained("sberbank-ai/rugpt2large")
     model.to(DEVICE)
+    lls = []
+    weights = []
 
-    for text in tqdm(preds):
+    for text in tqdm(preds, desc="Calculating perplexity..."):
         encodings = tokenizer(f"\n{text}\n", return_tensors="pt")
         input_ids = encodings.input_ids.to(DEVICE)
         target_ids = input_ids.clone()
