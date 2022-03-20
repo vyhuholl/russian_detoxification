@@ -37,11 +37,11 @@ fasttext_filename = "ru_fasttext/model.model"
 
 if not os.path.exists(fasttext_filename):
     print("FastText model not found. Downloading...", file=sys.stderr)
-    urlretrieve(fasttext_model_url, fasttext_model_url.split("/")[-1], show_progress)
+    urlretrieve(
+        fasttext_model_url, fasttext_model_url.split("/")[-1], show_progress
+    )
     unpack_archive(fasttext_model_url.split("/")[-1], "ru_fasttext")
     os.remove(fasttext_model_url.split("/")[-1])
-
-model = gensim.models.KeyedVectors.load(fasttext_filename)
 
 udpipe_url = "https://rusvectores.org/static/models/udpipe_syntagrus.model"
 udpipe_filename = udpipe_url.split("/")[-1]
@@ -49,11 +49,6 @@ udpipe_filename = udpipe_url.split("/")[-1]
 if not os.path.exists(udpipe_filename):
     print("UDPipe model not found. Downloading...", file=sys.stderr)
     urlretrieve(udpipe_url, udpipe_filename, show_progress)
-
-model_udpipe = Model.load(udpipe_filename)
-process_pipeline = Pipeline(
-    model_udpipe, "tokenize", Pipeline.DEFAULT, Pipeline.DEFAULT, "conllu"
-)
 
 
 def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
@@ -77,26 +72,32 @@ def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
 
-    for i in tqdm(0, len(preds), batch_size):
-        batch = tokenizer(preds[i : i + batch_size], return_tensors="pt", padding=True)
+    for i in range(0, len(preds), batch_size):
+        batch = tokenizer(
+            preds[i : i + batch_size], return_tensors="pt", padding=True
+        )
         res = model(**batch)["logits"].argmax(1).float().data.tolist()
         ans.extend([1 - item for item in res])
 
     return np.mean(ans)
 
 
-def get_sentence_vector(text: str) -> np.ndarray:
+def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
     """
     Computes a vector of a given text
 
     Parameters:
         text: str
+        model: a model used for word embeddings
+        pipeline: pipeline used for text preprocessing
 
     Returns:
         np.ndarray
     """
-    processed = process_pipeline.process(text)
-    content = [line for line in processed.split("\n") if not line.startswith("#")]
+    processed = pipeline.process(text)
+    content = [
+        line for line in processed.split("\n") if not line.startswith("#")
+    ]
     tagged = [w.split("\t") for w in content if w]
 
     tokens = []
@@ -121,13 +122,21 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> float:
     Returns:
         float
     """
-    print("Calculating cosine similarities...")
+    print("Loading FastText model...")
+    model = gensim.models.KeyedVectors.load(fasttext_filename)
+    print("Loading UDPipe model...")
+    model_udpipe = Model.load(udpipe_filename)
+    pipeline = Pipeline(
+        model_udpipe, "tokenize", Pipeline.DEFAULT, Pipeline.DEFAULT, "conllu"
+    )
     ans = []
+    print("Calculating cosine similarities...")
 
     for text_1, text_2 in tqdm(zip(inputs, preds)):
         ans.append(
             pairwise.cosine_similarity(
-                get_sentence_vector(text_1), get_sentence_vector(text_2)
+                get_sentence_vector(text_1, model, pipeline),
+                get_sentence_vector(text_2, model, pipeline),
             )
         )
 
@@ -205,6 +214,8 @@ def main(
     Returns:
         None
     """
+    print("Reading sentences...")
+
     with open(inputs_path) as inputs_file, open(preds_path) as preds_file:
         inputs = inputs_file.readlines()
         preds = preds_file.readlines()
@@ -213,7 +224,7 @@ def main(
     cs = cosine_similarity(inputs, preds)
     ppl = perplexity(preds)
     gm = metric(sta, cs, ppl)
-    print(f"Model name: {model_name}\n")
+    print(f"\nModel name: {model_name}\n")
     print(colored("STA", attrs=["bold"]), f": {sta:.2f}")
     print(colored("CS", attrs=["bold"]), f": {cs:.2f}")
     print(colored("PPL", attrs=["bold"]), f": {ppl:.2f}")
@@ -236,14 +247,19 @@ def main(
             with open(results_file, "w") as results:
                 results.write("Method | STA↑ | CS↑ | PPL↓ | GM↑")
                 results.write("------ | ---- | --- | ----| ---")
-                results.write(" | ".join([str(sta), str(cs), str(ppl), f"**{gm}**"]))
+                results.write(
+                    " | ".join([str(sta), str(cs), str(ppl), f"**{gm}**"])
+                )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="metric", description="Compute metrics for the predictions of a model."
+        prog="metric",
+        description="Compute metrics for the predictions of a model.",
     )
-    parser.add_argument("-i", "--inputs", required=True, help="path to test sentences")
+    parser.add_argument(
+        "-i", "--inputs", required=True, help="path to test sentences"
+    )
     parser.add_argument(
         "-p", "--preds", required=True, help="path to predictions of a model"
     )
