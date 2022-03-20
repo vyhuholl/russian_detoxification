@@ -72,7 +72,7 @@ def style_transfer_accuracy(preds: List[str], batch_size: int = 32) -> float:
         "SkolkovoInstitute/russian_toxicity_classifier"
     )
 
-    for i in range(0, len(preds), batch_size):
+    for i in tqdm(0, len(preds), batch_size):
         batch = tokenizer(
             preds[i : i + batch_size], return_tensors="pt", padding=True
         )
