@@ -6,9 +6,6 @@ from urllib.request import urlretrieve
 
 from tqdm import tqdm
 from ufal.udpipe import Model, Pipeline
-from utils import show_progress
-
-pbar = None
 
 
 def tokenize(
@@ -65,7 +62,7 @@ def main(inputs_path: str, vocab_path: str, results_path: str) -> None:
 
     if not os.path.exists(udpipe_filename):
         print("UDPipe model not found. Downloading...", file=sys.stderr)
-        urlretrieve(udpipe_url, udpipe_filename, show_progress)
+        urlretrieve(udpipe_url, udpipe_filename)
 
     print("Loading UDPipe model...")
     model_udpipe = Model.load(udpipe_filename)
@@ -87,8 +84,7 @@ def main(inputs_path: str, vocab_path: str, results_path: str) -> None:
         clean_text = " ".join(
             [word for word, lemma in zip(words, lemmas) if lemma not in vocab]
         )
-
-    results.append(clean_text)
+        results.append(clean_text)
 
     with open(results_path, "w") as results_file:
         for text in results:
