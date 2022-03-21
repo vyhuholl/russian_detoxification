@@ -35,7 +35,7 @@ Method | STA↑ | CS↑ | FL↑ | JS↑
 ------ | ---- | --- | --- | ---
 **Baselines** |
 Duplicate | 0.07 | 1.00 | 1.00 | **0.06**
-Delete | 0.25 | 0.96 | 0.89 | **0.23**
+Delete | 0.35 | 0.97 | 0.84 | **0.26**
 **Models** |
 ruBERT-large |
 ruRoBERTa-large |

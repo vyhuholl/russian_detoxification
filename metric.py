@@ -5,6 +5,7 @@ import sys
 from shutil import unpack_archive
 from typing import List, Optional
 from urllib.request import urlretrieve
+from warnings import filterwarnings
 
 import gensim
 import numpy as np
@@ -15,6 +16,8 @@ from tqdm import tqdm
 from transformers import BertForSequenceClassification, BertTokenizer
 from ufal.udpipe import Model, Pipeline
 from utils import show_progress
+
+filterwarnings("ignore")
 
 random.seed(42)
 np.random.seed(42)
@@ -92,7 +95,7 @@ def style_transfer_accuracy(
         batch_size=batch_size,
         desc="Calculating predictions' toxicity...",
     )
-    return np.concatenate([1 - x for x in ans])
+    return np.array([1 - x for x in ans])
 
 
 def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
@@ -119,7 +122,7 @@ def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
             tokens.append(token[2])
 
     embd = [model[token] for token in tokens]
-    return np.mean(embd, axis=0).reshape(1, -1)
+    return np.nan_to_num(np.mean(embd, axis=0).reshape(1, -1))
 
 
 def cosine_similarity(inputs: List[str], preds: List[str]) -> np.ndarray:
@@ -145,12 +148,15 @@ def cosine_similarity(inputs: List[str], preds: List[str]) -> np.ndarray:
     for text_1, text_2 in tqdm(
         zip(inputs, preds), desc="Calculating cosine similarities..."
     ):
-        ans.append(
-            pairwise.cosine_similarity(
-                get_sentence_vector(text_1, model, pipeline),
-                get_sentence_vector(text_2, model, pipeline),
+        try:
+            ans.append(
+                pairwise.cosine_similarity(
+                    get_sentence_vector(text_1, model, pipeline),
+                    get_sentence_vector(text_2, model, pipeline),
+                )[0][0]
             )
-        )
+        except ValueError:
+            ans.append(0.0)
 
     return np.array(ans)
 
