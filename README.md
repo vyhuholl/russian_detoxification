@@ -27,7 +27,5 @@ You can run the [`metric.py`](https://github.com/vyhuholl/russian_detoxification
 ## Results
 Method | STA↑ | CS↑ | FL↑ | JS↑
 ------ | ---- | --- | --- | ---
-Method | STA↑ | CS↑ | FL↑ | JS↑
------- | ---- | --- | --- | ---
 **Baselines** |
 Duplicate | 0.07 | 1.00 | 0.00 | **0.00**
