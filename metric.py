@@ -264,7 +264,7 @@ def main(
                             f"{np.mean(sta):.2f}",
                             f"{np.mean(cs):.2f}",
                             f"{np.mean(fl):.2f}",
-                            f"**{np.mean(js):.2f}**",
+                            f"**{np.mean(js):.Диалог2f}**",
                         ]
                     )
                 )

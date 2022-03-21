@@ -1,7 +1,6 @@
 gensim>=4.1.2
 numpy>=1.22.3
 progressbar>=2.5
-pymorphy2>=0.9.1
 scikit-learn>=1.0.2
 termcolor>=1.1.0
 tqdm>=4.63.0

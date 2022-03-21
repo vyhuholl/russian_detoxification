@@ -1,43 +1,21 @@
 import argparse
-import re
+import os
+import sys
 from typing import List
+from urllib.request import urlretrieve
 
-from pymorphy2 import MorphAnalyzer
 from tqdm import tqdm
+from ufal.udpipe import Model, Pipeline
+from utils import show_progress
+
+pbar = None
 
 
-def delete_toxic_words(
-    text: List[str], morph: MorphAnalyzer, vocab: List[str], lemmas: List[str]
-) -> str:
+def tokenize(
+    text: str, pipeline: Pipeline, tags: bool = False, lemmas: bool = False
+) -> List[str]:
     """
-    Deletes from a list of words all words which are either in toxic vocab
-    or have a lemma that is in the list of toxic words' lemmas.
-    Returns a single string — the remaining words joined by space.
-
-    Parameters:
-        text: List[str]
-        morph: MorphAnalyzer
-        vocab: List[str]
-        lemmas: List[str]
-
-    Returns:
-        str
-    """
-    return " ".join(
-        [
-            word
-            for word in text
-            if word not in vocab
-            and morph.parse(word)[0].normal_form not in lemmas
-        ]
-    )
-
-
-def main(inputs_path: str, vocab_path: str, results_file: str) -> None:
-    """
-    Deletes all rude or toxic words (including lemmas)
-    from a pre-defined vocab in a list of texts,
-    and writes the resulting texts to a file.
+    Tokenizes a text with the UDPipe pipeline.
 
     Parameters:
         inputs_path: str
@@ -46,33 +24,75 @@ def main(inputs_path: str, vocab_path: str, results_file: str) -> None:
     Returns:
         None
     """
+    processed = pipeline.process(text)
+    content = [
+        line for line in processed.split("\n") if not line.startswith("#")
+    ]
+    tagged = [w.split("\t") for w in content if w]
+    tokens = []
+
+    for token in tagged:
+        if token[3] == "PUNCT":
+            continue
+        token_res = ""
+        if lemmas:
+            token_res = token[2]
+        else:
+            token_res = token[1]
+        if tags:
+            token_res += "_" + token[3]
+        tokens.append(token_res)
+
+    return tokens
+
+
+def main(inputs_path: str, vocab_path: str, results_path: str) -> None:
+    """
+    Deletes all rude or toxic words (including lemmas)
+    from a pre-defined vocab in a list of texts,
+    and writes the resulting texts to a file.
+
+    Parameters:
+        inputs_path: str
+        preds_path: str
+        results_path: str
+
+    Returns:
+        None
+    """
+    udpipe_url = "https://rusvectores.org/static/models/udpipe_syntagrus.model"
+    udpipe_filename = udpipe_url.split("/")[-1]
+
+    if not os.path.exists(udpipe_filename):
+        print("UDPipe model not found. Downloading...", file=sys.stderr)
+        urlretrieve(udpipe_url, udpipe_filename, show_progress)
+
+    print("Loading UDPipe model...")
+    model_udpipe = Model.load(udpipe_filename)
+    pipeline = Pipeline(
+        model_udpipe, "tokenize", Pipeline.DEFAULT, Pipeline.DEFAULT, "conllu"
+    )
+
     with open(inputs_path) as inputs_file:
         texts = inputs_file.readlines()
 
     with open(vocab_path) as vocab_file:
-        vocab = vocab_file.readlines()
+        vocab = [line.strip() for line in vocab_file.readlines()]
 
-    morph = MorphAnalyzer()
-    vocab = [word for word in vocab if " " not in word]
-    print("Lemmatizing vocab...")
-    lemmas = [morph.parse(word)[0].normal_form for word in tqdm(vocab)]
-    clean_texts = []
-    print("Preprocessing and tokenizing texts...")
+    results = []
 
-    for text in tqdm(texts):
-        clean_texts.append(
-            [word for word in re.split(r"[^а-яё]+", text.lower()) if word]
+    for text in tqdm(texts, desc="Deleting toxic words..."):
+        words = tokenize(text, pipeline, lemmas=False)
+        lemmas = tokenize(text, pipeline, lemmas=True)
+        clean_text = " ".join(
+            [word for word, lemma in zip(words, lemmas) if lemma not in vocab]
         )
 
-    print("Deleting rude and toxic words...")
-    texts = [
-        delete_toxic_words(text, morph, vocab, lemmas)
-        for text in tqdm(clean_texts)
-    ]
+    results.append(clean_text)
 
-    with open(results_file, "w") as results:
-        for text in texts:
-            results.write(text + "\n")
+    with open(results_path, "w") as results_file:
+        for text in results:
+            results_file.write(text + "\n")
 
 
 if __name__ == "__main__":
