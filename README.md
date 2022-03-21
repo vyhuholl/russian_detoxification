@@ -11,6 +11,11 @@ Folder [`data`](https://github.com/vyhuholl/russian_detoxification/tree/master/d
 We provide two baselines:
 * **Duplicate** — simple duplication of the input;
 * **Delete** ([`baselines/delete.py`](https://github.com/vyhuholl/russian_detoxification/blob/master/baselines/delete.py)) — removal of rude and toxic from the pre-defined [vocab](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt).
+### Models
+The general algorithm of text detoxification for models trained on parallel data:
+1. **Toxic word detection** — we train a binary classifier to detect toxic words;
+2.  **Toxic word replacement** — to replace words classified as toxic, we use one of [pre-trained NLP models for Russian language](https://github.com/sberbank-ai/model-zoo). From the top-10 of model predictions we select one that is 1) non-toxic 2) closest to the original word (word embeddings are generated with the [FastText](http://vectors.nlpl.eu/repository/20/213.zip) model).
+3.  **Toxic word deletion** — if a non-toxic replacement wasn't found in the top-10 of model predictions, we delete the word.
 ## Evaluation
 The evaluation consists of three types of metrics:
 * **style transfer accuracy (STA)** — the average confidence of the pre-trained BERT-based toxic/non-toxic text classifier (`SkolkovoInstitute/russian_toxicity_classifier`). We suppose that the resulted texts should be in non-toxic style);
@@ -29,4 +34,6 @@ You can run the [`metric.py`](https://github.com/vyhuholl/russian_detoxification
 Method | STA↑ | CS↑ | FL↑ | JS↑
 ------ | ---- | --- | --- | ---
 **Baselines** |
-Duplicate | 0.07 | 1.00 | 0.00 | **0.00**
+Duplicate | 0.07 | 1.00 | 1.00 | **0.06**
+Delete | 0.25 | 0.96 | 0.89 | **0.23**
+**Models** |
