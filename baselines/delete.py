@@ -66,11 +66,13 @@ def main(inputs_path: str, vocab_path: str, results_file: str) -> None:
 
     print("Deleting rude and toxic words...")
     texts = [
-        delete_toxic_words(text, morph, vocab, lemmas) for text in tqdm(texts)
+        delete_toxic_words(text, morph, vocab, lemmas)
+        for text in tqdm(clean_texts)
     ]
 
     with open(results_file, "w") as results:
-        results.writelines(texts)
+        for text in texts:
+            results.write(text + "\n")
 
 
 if __name__ == "__main__":
