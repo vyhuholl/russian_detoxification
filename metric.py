@@ -63,7 +63,7 @@ def classify_texts(
             preds = torch.softmax(model(**batch).logits, -1)[:, 1].cpu().numpy()
         ans.append(preds)
 
-    return np.concatenate([1 - x for x in ans])
+    return np.concatenate(ans)
 
 
 def style_transfer_accuracy(
@@ -92,7 +92,7 @@ def style_transfer_accuracy(
         batch_size=batch_size,
         desc="Calculating predictions' toxicity...",
     )
-    return ans
+    return np.concatenate([1 - x for x in ans])
 
 
 def get_sentence_vector(text: str, model, pipeline) -> np.ndarray:
@@ -243,6 +243,7 @@ def main(
                     results.write(
                         " | ".join(
                             [
+                                model_name,
                                 f"{np.mean(sta):.2f}",
                                 f"{np.mean(cs):.2f}",
                                 f"{np.mean(fl):.2f}",
@@ -259,6 +260,7 @@ def main(
                 results.write(
                     " | ".join(
                         [
+                            model_name,
                             f"{np.mean(sta):.2f}",
                             f"{np.mean(cs):.2f}",
                             f"{np.mean(fl):.2f}",

@@ -7,9 +7,9 @@ Folder [`data`](https://github.com/vyhuholl/russian_detoxification/tree/master/d
 * [`data/toxic_vocab.txt`](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt) — pre-defined vocab of rude and toxic words, 139490 words.
 ## Models
 ### Baselines
+We provide two baselines:
 * **Duplicate** — simple duplication of the input;
-* **Remove** — removal of rude and toxic from the pre-defined [vocab](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt);
-* **Retrieve** — retrieval based on cosine similarity between word embeddings from non-toxic part of [RuToxic](https://github.com/skoltech-nlp/rudetoxifier/blob/main/data/train/ru_toxic_dataset.csv) dataset.
+* **Delete** ([`baselines/delete.py`](https://github.com/vyhuholl/russian_detoxification/blob/master/baselines/delete.py)) — removal of rude and toxic from the pre-defined [vocab](https://github.com/vyhuholl/russian_detoxification/blob/master/data/toxic_vocab.txt).
 ## Evaluation
 The evaluation consists of three types of metrics:
 * **style transfer accuracy (STA)** — the average confidence of the pre-trained BERT-based toxic/non-toxic text classifier (`SkolkovoInstitute/russian_toxicity_classifier`). We suppose that the resulted texts should be in non-toxic style);
@@ -27,4 +27,7 @@ You can run the [`metric.py`](https://github.com/vyhuholl/russian_detoxification
 ## Results
 Method | STA↑ | CS↑ | FL↑ | JS↑
 ------ | ---- | --- | --- | ---
+Method | STA↑ | CS↑ | FL↑ | JS↑
+------ | ---- | --- | --- | ---
 **Baselines** |
+Duplicate | 0.07 | 1.00 | 0.00 | **0.00**
