@@ -76,8 +76,8 @@ def main(inputs_path: str, vocab_path: str, results_file: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="delete",
-        description="Deletes all rude or toxic words from a pre-defined"
-        + "vocab in a list of texts,"
+        description="Deletes all rude or toxic words from a pre-defined "
+        + "vocab in a list of texts, "
         + "and writes the resulting texts to a file.",
     )
     parser.add_argument(
